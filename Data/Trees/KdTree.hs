@@ -60,13 +60,13 @@ fromList points = fromListWithDepth points 0
 fromListWithDepth :: Point p => [p] -> Int -> KdTree p
 fromListWithDepth [] _ = KdEmpty
 fromListWithDepth points depth = node
-    where axis = depth `mod` dimension (head points) 
+    where axis = depth `mod` dimension (head points)
 
           -- Sort point list and choose median as pivot element
           sortedPoints =
               L.sortBy (\a b -> coord axis a `compare` coord axis b) points
           medianIndex = length sortedPoints `div` 2
-        
+
           -- Create node and construct subtrees
           node = KdNode { kdLeft = fromListWithDepth (take medianIndex sortedPoints) (depth+1),
                           kdPoint = sortedPoints !! medianIndex,
@@ -138,9 +138,21 @@ allSubtreesAreValid = all isValid . subtrees
 kNearestNeighbors :: (Eq p, Point p) => KdTree p -> Int -> p -> [p]
 kNearestNeighbors KdEmpty _ _ = []
 kNearestNeighbors _ k _ | k <= 0 = []
-kNearestNeighbors tree k probe = nearest : kNearestNeighbors tree' (k-1) probe
-    where nearest = fromJust $ nearestNeighbor tree probe
-          tree' = tree `remove` nearest
+kNearestNeighbors (KdNode l p r axis) k probe =
+  if xProbe <= xp then findNearest l r else findNearest r l
+  where xProbe = coord axis probe
+        xp = coord axis p
+        findNearest tree1 tree2 =
+          let candidates1 = case kNearestNeighbors tree1 k probe of
+                [] -> [p]
+                best1 -> p : best1
+              sphereIntersectsPlane = (xProbe - xp)^2 <= dist2 probe p
+              candidates2 =
+                if sphereIntersectsPlane
+                then candidates1 ++ kNearestNeighbors tree2 k probe
+                else candidates1 in
+          take k . L.sortBy (compareDistance probe) $ candidates2
+
 
 -- |remove t p removes the point p from t.
 remove :: (Eq p, Point p) => KdTree p -> p -> KdTree p
@@ -158,4 +170,3 @@ instance Arbitrary Point3d where
         y <- arbitrary
         z <- arbitrary
         return (Point3d x y z)
-
