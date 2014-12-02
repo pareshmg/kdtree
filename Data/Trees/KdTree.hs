@@ -170,3 +170,7 @@ instance Arbitrary Point3d where
         y <- arbitrary
         z <- arbitrary
         return (Point3d x y z)
+
+neighborsWithinEpsilon2 :: (Eq p, Point p) => KdTree p -> Double -> p -> [p]
+neighborsWithinEpsilon2 kd epsilon2 probe = takeWhile (\p -> (dist2 p probe) <= epsilon2) ordPts
+ where ordPts = kNearestNeighbors kd (maxBound :: Int) probe
